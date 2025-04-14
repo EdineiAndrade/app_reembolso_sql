@@ -49,7 +49,7 @@ def formatar_dataframe(df):
         lambda x: f"{x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
     )
 
-    df['TELEFONE'] = df['TELEFONE'].astype(str)
+    df['TELEFONE'] = df['TELEFONE'].astype(str).str.replace(r'\.0$', '', regex=True)
     
     return df
 
