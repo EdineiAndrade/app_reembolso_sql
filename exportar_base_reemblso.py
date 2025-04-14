@@ -4,6 +4,7 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 import pandas as pd
+import time
 
 def gerar_pdf(agente, df_agente):
     """Gera um PDF a partir de um DataFrame."""
@@ -47,6 +48,8 @@ def formatar_dataframe(df):
     df['RECEBIDO'] = df['RECEBIDO'].fillna(0).apply(
         lambda x: f"{x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
     )
+
+    df['TELEFONE'] = df['TELEFONE'].astype(str)
     
     return df
 
@@ -61,7 +64,7 @@ def exportar(df, base_dir):
     COLUNAS_OBRIGATORIAS  = [
         'NM_CLIENTE', 'OPERACAO', 'FINAL',
         'MES_PARCELA', 'DT_PARCELA', 'DIAS_REEM', 'PREVISTO', 'RECEBIDO',
-        'STATUS', 'MUNICIPIO', 'ID_AGROAMIGO', 'Nome_Agente', 'UNIDADE'
+        'STATUS', 'MUNICIPIO', 'ID_AGROAMIGO', 'Nome_Agente', 'UNIDADE', 'TELEFONE', 'ENDEREÇO'
     ]
     
     # 1. Verificar e manter apenas as colunas obrigatórias que existem no DataFrame
@@ -79,6 +82,7 @@ def exportar(df, base_dir):
         df['RECEBIDO'] = pd.to_numeric(df['RECEBIDO'].str.replace('.', '').str.replace(',', '.'), errors='coerce')
         df['PREVISTO'] = pd.to_numeric(df['PREVISTO'].str.replace('.', '').str.replace(',', '.'), errors='coerce')
         
+
         # Aplicar a regra de atualização de status
         df['STATUS'] = df.apply(
             lambda row: 'PAGO' if row['STATUS'] != 'PAGO' and row['RECEBIDO'] >= (row['PREVISTO'] * 0.98) 
@@ -113,11 +117,12 @@ def exportar(df, base_dir):
             df_agente.to_excel(xlsx_path, index=False)
             
             # Preparar dados para PDF (remover colunas e apenas não pagos)
-            df_pdf = df_agente.drop(columns=["Nome_Agente", "UNIDADE", "MUNICIPIO", "ID_AGROAMIGO"])
+            df_pdf = df_agente.drop(columns=["Nome_Agente", "UNIDADE", "MUNICIPIO", "ID_AGROAMIGO","ENDEREÇO"])
             df_pdf = df_pdf[df_pdf['STATUS'] != "PAGO"]
             
             # Gerar e salvar PDF se houver dados
             if not df_pdf.empty:
+                time.sleep(.3)
                 pdf_bytes = gerar_pdf(agente, df_pdf)
                 with open(pdf_path, "wb") as f:
                     f.write(pdf_bytes)
@@ -125,13 +130,35 @@ def exportar(df, base_dir):
             print(f"Processado: UNIDADE:{unidade} AGENTE:{agente}")
 
 def exportar_base_reembolso(df_final):
-            # Configurações
-            BASE_DIR = r'C:\Users\inec\OneDrive - Instituto Nordeste Cidadania\AGROAMIGO\RELATÓRIOS\REEMBOLSO_2025'
+    # Caminhos em ordem de prioridade
+    CAMINHO_PRIMARIO = r'C:\Users\inec\OneDrive - Instituto Nordeste Cidadania\AGROAMIGO\RELATÓRIOS\REEMBOLSO_2025'
+    CAMINHO_ALTERNATIVO = r'C:\Reembolso\Bases\RELATORIO_UNIDADES'
+    
+    # Verifica se o caminho primário existe
+    if os.path.exists(CAMINHO_PRIMARIO):
+        BASE_DIR = CAMINHO_PRIMARIO
+        print(f"Usando diretório primário: {BASE_DIR}")
+    else:
+        # Se o primário não existe, verifica o alternativo
+        if os.path.exists(CAMINHO_ALTERNATIVO):
+            BASE_DIR = CAMINHO_ALTERNATIVO
+            print(f"Usando diretório alternativo existente: {BASE_DIR}")
+        else:
+            # Se nenhum existir, cria o alternativo
+            try:
+                os.makedirs(CAMINHO_ALTERNATIVO)
+                BASE_DIR = CAMINHO_ALTERNATIVO
+                print(f"Diretório alternativo criado: {BASE_DIR}")
+            except Exception as e:
+                print(f"Falha ao criar diretório alternativo: {e}")
+                return  # Encerra a função se não conseguir criar
+    
+    # Processamento e exportação
+    try:
+        df_formatado = formatar_dataframe(df_final)  # Supondo que essa função existe
+        exportar(df_formatado, BASE_DIR)  # Supondo que essa função existe
+        print(f"Exportação concluída em: {BASE_DIR}")
+    except Exception as e:
+        print(f"Erro durante a exportação: {e}")
             
-            # Carregar dados (substitua por sua fonte de dados)
-            # df = carregar_dados()  # Implemente esta função conforme necessário
-            
-            # Formatar e exportar
-            df_formatado = formatar_dataframe(df_final)
-            exportar(df_formatado, BASE_DIR)
-            print("Exportação concluída!")
+

@@ -23,7 +23,9 @@ def main():
     df_final = atualizar_valores_recebidos(df_reembolso,df_recebidos)
     print("Exportando arquivos...")
     exportar_base_reembolso(df_final)
+    print("Processo Finalizado!!")
          
 
 if __name__ == "__main__":
+
     main()
